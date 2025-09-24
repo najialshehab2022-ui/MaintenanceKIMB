@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>نموذج تقرير صيانة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap RTL -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+
+  <!-- html2canvas for screenshot -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- Flatpickr for date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+  <style>
+    body {
+      direction: rtl;
+      text-align: right;
+      font-family: sans-serif;
+    }
+
+    /* تأكد من أن النص داخل الحقول يظهر على اليمين */
+    input,
+    textarea {
+      text-align: right;
+      resize: none;
+      overflow: hidden;
+    }
+
+    .a4-container {
+      width: 210mm;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+    }
+
+    .signature-canvas {
+      border: 1px solid #ccc;
+      width: 100%;
+      height: 150px;
+    }
+
+    #shareBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+
+    @media print {
+      #shareBtn {
+        display: none;
+      }
+
+      .a4-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      input,
+      textarea {
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+
+    @media screen and (max-width: 210mm) {
+      .a4-container {
+        width: 100%;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="a4-container shadow-sm">
+    <div class="container-fluid">
+
+      <!-- Header -->
+      <div class="row align-items-center text-center mb-4 g-2">
+        <div class="col-md-3">
+          <h6 class="fw-bold m-0">بنك الكريمي للتمويل الأصغر الإسلامي</h6>
+        </div>
+        <div class="col-md-6">
+          <img src="kimb.png" alt="شعار" class="img-fluid" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">رقم التقرير:</label>
+          <input type="text" class="form-control" placeholder="أدخل رقم التقرير" />
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="row mb-3">
+        <div class="col text-center">
+          <h4 class="fw-bold">نموذج تقرير صيانة</h4>
+        </div>
+      </div>
+
+      <!-- General Data -->
+      <div class="row mb-4 g-2">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">تم النزول إلى منطقة:</label>
+          <input type="text" class="form-control" placeholder="الخمسين" onfocus="this.placeholder=''" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">الفرع:</label>
+          <input type="text" class="form-control" placeholder="حدة" onfocus="this.placeholder=''" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">اليوم:</label>
+          <input type="text" id="dayInput" class="form-control" readonly />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">التاريخ:</label>
+          <input type="date" id="dateInput" class="form-control" onchange="updateDay()" />
+        </div>
+      </div>
+
+      <!-- Maintenance Type -->
+      <div class="row align-items-center mb-4">
+        <div class="col-md-3 text-md-end text-center mb-2 mb-md-0">
+          <label class="fw-semibold">نوع الصيانة:</label>
+        </div>
+        <div class="col-md-3 text-center">
+          <input type="radio" name="maintenanceType" id="preventive" class="form-check-input me-2" />
+          <label for="preventive" class="form-check-label">صيانة استباقية</label>
+        </div>
+        <div class="col-md-3 text-center">
+          <input type="radio" name="maintenanceType" id="emergency" class="form-check-input me-2" />
+          <label for="emergency" class="form-check-label">صيانة طارئة</label>
+        </div>
+      </div>
+
+      <!-- Maintenance Description Checkboxes -->
+      <div class="row mb-4 text-center g-2">
+        <div class="col-md-3">
+          <label class="fw-semibold">توصيف الصيانة:</label>
+        </div>
+        <div class="col-md-3">
+          <input type="checkbox" id="assets" class="form-check-input me-2" />
+          <label for="assets">أصول وخزنات</label>
+        </div>
+        <div class="col-md-3">
+          <input type="checkbox" id="option3" class="form-check-input me-2" />
+          <label for="option3">خيار 3</label>
+        </div>
+        <div class="col-md-3">
+          <input type="checkbox" id="option4" class="form-check-input me-2" />
+          <label for="option4">خيار 4</label>
+        </div>
+      </div>
+
+      <!-- Diagnosis & Actions -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-6">
+          <label class="fw-semibold">تم القيام بالفحص والتشخيص عن الآتي:</label>
+          <textarea id="diagnosis" class="form-control mb-3" rows="1" oninput="autoExpand(this)" placeholder="..."></textarea>
+
+          <label class="fw-semibold">وكانت نتائج الفحص والأسباب هي:</label>
+          <textarea id="results" class="form-control mb-3" rows="1" oninput="autoExpand(this)" placeholder="..."></textarea>
+
+          <label class="fw-semibold">وتم تنفيذ المعالجات الآتية:</label>
+          <textarea id="actions" class="form-control" rows="1" oninput="autoExpand(this)" placeholder="..."></textarea>
+        </div>
+
+        <!-- Spare Parts Table -->
+        <div class="col-md-6">
+          <div class="table-responsive">
+            <table class="table table-bordered text-center" id="partsTable">
+              <thead class="table-light">
+                <tr>
+                  <th>الأصناف</th>
+                  <th>العدد</th>
+                  <th>قطع الغيار المستبدلة</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><textarea class="form-control" rows="1" oninput="autoExpand(this)"></textarea></td>
+                  <td><textarea class="form-control" rows="1" oninput="autoExpand(this)"></textarea></td>
+                  <td><textarea class="form-control" rows="1" oninput="autoExpand(this)"></textarea></td>
+                  <td><button class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑 حذف</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="btn btn-success" onclick="addRow()">➕ إضافة صف</button>
+        </div>
+      </div>
+
+      <!-- Recommendations & Signatures -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label class="fw-bold">مدير الفرع - استلمت أنا:</label>
+            <input type="text" class="form-control" placeholder="اسم المدير" />
+          </div>
+          <p>جميع أعمال الصيانة التي نفذها المهندس والموضحة أعلاه وتم استلام قطع الغيار التالفة منه ولا يوجد أي قصور بالتنفيذ.</p>
+          <label class="fw-bold">توصيات مدير الفرع:</label>
+          <textarea class="form-control mb-2" rows="1" oninput="autoExpand(this)"></textarea>
+          <label class="fw-bold">التوقيع:</label>
+          <!-- حدد أبعاد canvas -->
+          <canvas id="managerSign" class="signature-canvas" width="600" height="150"></canvas>
+          <button class="btn btn-secondary btn-sm mt-1" onclick="clearCanvas('managerSign')">مسح التوقيع</button>
+        </div>
+
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label class="fw-bold">اسم منفذ الصيانة:</label>
+            <input type="text" class="form-control" placeholder="اسم الفني أو المهندس" />
+          </div>
+          <label class="fw-bold">التوقيع:</label>
+          <canvas id="techSign" class="signature-canvas" width="600" height="150"></canvas>
+          <button class="btn btn-secondary btn-sm mt-1" onclick="clearCanvas('techSign')">مسح التوقيع</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <button id="shareBtn">📤 شارك التقرير</button>
+
+  <script>
+    // ضبط التاريخ واليوم تلقائياً عند التحميل
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+      updateDay();
+
+      // تهيئة flatpickr
+      flatpickr("#dateInput", {
+        dateFormat: "Y-m-d",
+        defaultDate: today,
+        onChange: updateDay
+      });
+
+      // توسيع textarea تلقائياً
+      document.querySelectorAll('textarea').forEach(el => autoExpand(el));
+
+      // تفعيل التوقيع
+      initSignature('managerSign');
+      initSignature('techSign');
+
+      // ربط زر المشاركة
+      document.getElementById('shareBtn').addEventListener('click', shareReport);
+    });
+
+    // تحديث اسم اليوم
+    function updateDay() {
+      const val = document.getElementById('dateInput').value;
+      if (!val) return;
+      const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      document.getElementById('dayInput').value = days[new Date(val).getDay()];
+    }
+
+    // تكبير textarea حسب المحتوى
+    function autoExpand(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    // إضافة صف جديد
+    function addRow() {
+      const tbody = document.querySelector('#partsTable tbody');
+      const tr = document.createElement('tr');
+      for (let i = 0; i < 3; i++) {
+        const td = document.createElement('td');
+        const ta = document.createElement('textarea');
+        ta.className = 'form-control';
+        ta.rows = 1;
+        ta.oninput = () => autoExpand(ta);
+        td.appendChild(ta);
+        tr.appendChild(td);
+      }
+      const td = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-danger btn-sm';
+      btn.textContent = '🗑 حذف';
+      btn.onclick = () => deleteRow(btn);
+      td.appendChild(btn);
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
+    // حذف صف
+    function deleteRow(btn) {
+      btn.closest('tr').remove();
+    }
+
+    // مسح التوقيع
+    function clearCanvas(id) {
+      const c = document.getElementById(id);
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+    }
+
+    // تفعيل التوقيع على canvas
+    function initSignature(id) {
+      const c = document.getElementById(id);
+      const ctx = c.getContext('2d');
+      let drawing = false;
+      c.addEventListener('mousedown', () => drawing = true);
+      c.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+      c.addEventListener('mousemove', e => {
+        if (!drawing) return;
+        const rect = c.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+      // دعم اللمس
+      c.addEventListener('touchstart', () => drawing = true);
+      c.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
+      c.addEventListener('touchmove', e => {
+        if (!drawing) return;
+        const t = e.touches[0];
+        const rect = c.getBoundingClientRect();
+        const x = t.clientX - rect.left;
+        const y = t.clientY - rect.top;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+    }
+
+    // مشاركة التقرير فقط
+    function shareReport() {
+      html2canvas(document.querySelector('.a4-container'), { useCORS: true }).then(canvas => {
+        canvas.toBlob(async blob => {
+          const file = new File([blob], 'maintenance-report.png', { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: 'تقرير الصيانة',
+                text: 'هذا نموذج تقرير صيانة.'
+              });
+            } catch (err) {
+              alert('فشل في المشاركة: ' + err);
+            }
+          } else {
+            alert('المتصفح لا يدعم مشاركة الملفات مباشرة.');
+          }
+        }, 'image/png');
+      });
+    }
+  </script>
+
+</body>
+</html>
