@@ -137,7 +137,8 @@
 
         @media print {
             #shareBtn,
-            #photoBtn {
+            #photoBtn,
+            #clearBtn {
                 display: none;
             }
 
@@ -161,7 +162,8 @@
 
         /* 7. أزرار المشاركة والصور */
         #shareBtn,
-        #photoBtn {
+        #photoBtn,
+        #clearBtn {
             position: fixed;
             bottom: 20px;
             padding: 12px 20px;
@@ -186,6 +188,11 @@
             background-color: #28a745;
         }
 
+        #clearBtn {
+            left: 20px;
+            background-color: #dc3545;
+        }
+
         #shareBtn:hover {
             background-color: #0056b3;
             transform: translateX(-50%) scale(1.05);
@@ -193,6 +200,11 @@
 
         #photoBtn:hover {
             background-color: #1e7e34;
+            transform: scale(1.05);
+        }
+
+        #clearBtn:hover {
+            background-color: #c82333;
             transform: scale(1.05);
         }
 
@@ -648,6 +660,47 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* تحسينات لالتقاط الصورة */
+        #reportArea {
+            position: relative;
+            background: white;
+        }
+
+        /* إصلاح مشاكل التخطيط أثناء الالتقاط */
+        @media screen and (max-width: 210mm) {
+            .a4-container {
+                width: 100% !important;
+                margin: 0 auto !important;
+            }
+        }
+
+        /* تحسين جودة النص في الصورة */
+        .textarea-replacement {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.5;
+            text-align: right;
+            direction: rtl;
+        }
+
+        /* 20. إصلاح مشكلة التقاط الشاشة كاملة */
+        .capture-container {
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        /* إصلاح مشكلة التوقيعات في التقاط الشاشة */
+        .signature-box-capture {
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .signature-canvas-capture {
+            flex-grow: 1;
+            min-height: 180px;
+        }
     </style>
 
 </head>
@@ -659,7 +712,7 @@
     </div>
 
     <div class="a4-container shadow-sm" id="reportArea">
-        <div class="container-fluid">
+        <div class="container-fluid capture-container">
 
             <div class="row align-items-center text-center mb-4 g-2">
                 <div class="col-md-3">
@@ -825,9 +878,9 @@
             <div class="containere">
                 <div class="signature-content">
                     <div class="signature-container">
-                        <div class="signature-box">
+                        <div class="signature-box signature-box-capture">
                             <h2><i class="fas fa-user-tie"></i> توقيع مدير الفرع</h2>
-                            <div id="managerSign" class="signature-canvas">انقر هنا للتوقيع</div>
+                            <div id="managerSign" class="signature-canvas signature-canvas-capture">انقر هنا للتوقيع</div>
                             <div class="signature-controls">
                                 <button class="btn btn-clear" onclick="clearCanvas('managerSign')">
                                     <i class="fas fa-eraser"></i> مسح التوقيع
@@ -838,9 +891,9 @@
                             </div>
                         </div>
 
-                        <div class="signature-box">
+                        <div class="signature-box signature-box-capture">
                             <h2><i class="fas fa-user-cog"></i> توقيع المهندس</h2>
-                            <div id="techSign" class="signature-canvas">انقر هنا للتوقيع</div>
+                            <div id="techSign" class="signature-canvas signature-canvas-capture">انقر هنا للتوقيع</div>
                             <div class="signature-controls">
                                 <button class="btn btn-clear" onclick="clearCanvas('techSign')">
                                     <i class="fas fa-eraser"></i> مسح التوقيع
@@ -878,6 +931,7 @@
     </div>
 
     <button id="shareBtn">📤 شارك التقرير</button>
+    <button id="clearBtn">🗑 مسح</button>
 
     <script>
         // متغيرات لتتبع حالة التوقيع
@@ -914,6 +968,7 @@
 
             document.querySelectorAll('textarea').forEach(el => autoExpand(el));
             document.getElementById('shareBtn').addEventListener('click', shareReport);
+            document.getElementById('clearBtn').addEventListener('click', clearStorage);
 
             initLargeCanvas();
 
@@ -947,11 +1002,11 @@
             const tbody = document.querySelector('#partsTable tbody');
             const tr = document.createElement('tr');
             tr.innerHTML = `
-        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
-        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
-        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑 حذف</button></td>
-      `;
+                <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑 حذف</button></td>
+            `;
             tbody.appendChild(tr);
             saveToLocalStorage();
         }
@@ -1060,7 +1115,7 @@
             saveToLocalStorage();
         }
 
-        // === (جديد) دوال التحكم في مؤشر التحميل ===
+        // === دوال التحكم في مؤشر التحميل ===
         const loader = document.getElementById('loader');
 
         function showLoader() {
@@ -1080,7 +1135,7 @@
             document.getElementById('galleryInput').click();
         }
 
-        // (معدلة) تحويل الدالة لتعيد Promise لجعلها غير متزامنة
+        // تحويل الدالة لتعيد Promise لجعلها غير متزامنة
         function resizeImage(file) {
             return new Promise((resolve, reject) => {
                 const canvas = document.createElement('canvas');
@@ -1120,7 +1175,7 @@
             });
         }
 
-        // (معدلة) دالة غير متزامنة للتعامل مع التحميل ومنع تجميد الواجهة
+        // دالة غير متزامنة للتعامل مع التحميل ومنع تجميد الواجهة
         async function handlePhotoSelection(event) {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
@@ -1165,13 +1220,13 @@
                 return;
             }
             photosGrid.innerHTML = attachedPhotos.map(photo => `
-        <div class="photo-item">
-          <img src="${photo.src}" alt="${photo.name}" loading="lazy">
-          <button class="photo-remove" onclick="removePhoto('${photo.id}')" title="حذف الصورة">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      `).join('');
+                <div class="photo-item">
+                    <img src="${photo.src}" alt="${photo.name}" loading="lazy">
+                    <button class="photo-remove" onclick="removePhoto('${photo.id}')" title="حذف الصورة">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
         }
 
         function removePhoto(photoId) {
@@ -1187,12 +1242,13 @@
             return branchName;
         }
 
-        // === دالة المشاركة (بدون تغيير كبير في المنطق الأساسي) ===
+        // === دالة المشاركة المحسنة ===
         function shareReport() {
             showLoader(); // إظهار المؤشر عند بدء المشاركة
             const branchName = getBranchName();
             const currentDate = new Date().toISOString().split('T')[0];
             const fileName = `تقرير_صيانة_${branchName}_${currentDate}`;
+            
             const replacedTextareas = [];
 
             document.querySelectorAll("textarea").forEach(textarea => {
@@ -1206,42 +1262,98 @@
                 });
             });
 
+            // إعدادات html2canvas محسنة لجودة أعلى وضمان التقاط كامل المحتوى
+            const reportArea = document.getElementById('reportArea');
+            
             const options = {
                 useCORS: true,
                 allowTaint: false,
-                scale: 2,
-                scrollX: -window.scrollX,
-                scrollY: -window.scrollY,
-                windowWidth: document.documentElement.offsetWidth,
-                windowHeight: document.documentElement.offsetHeight,
+                scale: 3, // زيادة المقياس لدقة أعلى
+                width: reportArea.scrollWidth,
+                height: reportArea.scrollHeight,
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: reportArea.scrollWidth,
+                windowHeight: reportArea.scrollHeight,
                 backgroundColor: '#ffffff',
+                logging: false,
+                removeContainer: true,
+                onclone: function(clonedDoc) {
+                    // التأكد من تطبيق جميع الأنماط بشكل صحيح في المستنسخ
+                    const cloneContainer = clonedDoc.getElementById('reportArea');
+                    if (cloneContainer) {
+                        cloneContainer.style.width = '100%';
+                        cloneContainer.style.height = 'auto';
+                        cloneContainer.style.overflow = 'visible';
+                        
+                        // التأكد من أن التوقيعات تظهر بشكل كامل
+                        const signatureBoxes = cloneContainer.querySelectorAll('.signature-box');
+                        signatureBoxes.forEach(box => {
+                            box.style.minHeight = '250px';
+                            box.style.display = 'flex';
+                            box.style.flexDirection = 'column';
+                        });
+                        
+                        const signatureCanvases = cloneContainer.querySelectorAll('.signature-canvas');
+                        signatureCanvases.forEach(canvas => {
+                            canvas.style.minHeight = '180px';
+                            canvas.style.flexGrow = '1';
+                        });
+                    }
+                    
+                    // إخفاء الأزرار في الصورة
+                    const buttons = clonedDoc.querySelectorAll('#shareBtn, #clearBtn, #photoBtn');
+                    buttons.forEach(btn => {
+                        if (btn) btn.style.display = 'none';
+                    });
+                }
             };
 
-            html2canvas(document.getElementById("reportArea"), options).then(canvas => {
-                canvas.toBlob(function(blob) {
-                    const file = new File([blob], `${fileName}.png`, {
+            html2canvas(reportArea, options).then(canvas => {
+                // إنشاء صورة بجودة أعلى
+                const highQualityCanvas = document.createElement('canvas');
+                highQualityCanvas.width = canvas.width;
+                highQualityCanvas.height = canvas.height;
+                const ctx = highQualityCanvas.getContext('2d');
+                
+                // تعيين جودة التصيير الأعلى
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(canvas, 0, 0);
+                
+                // التحويل إلى blob بجودة أعلى
+                highQualityCanvas.toBlob(function(blob) {
+                    const highQualityFile = new File([blob], `${fileName}.png`, {
                         type: "image/png"
                     });
+                    
+                    // محاولة استخدام Web Share API أولاً
                     if (navigator.share && navigator.canShare && navigator.canShare({
-                            files: [file]
-                        })) {
+                        files: [highQualityFile]
+                    })) {
                         navigator.share({
-                            files: [file],
+                            files: [highQualityFile],
                             title: `تقرير صيانة - ${branchName}`,
                             text: `تم إنشاء تقرير صيانة لفرع ${branchName}`
-                        }).catch(err => downloadImage(canvas, fileName));
+                        }).then(() => {
+                            console.log('تم المشاركة بنجاح');
+                        }).catch(err => {
+                            console.log('المشاركة فشلت، يتم التحميل:', err);
+                            downloadImage(highQualityCanvas, fileName);
+                        });
                     } else {
-                        downloadImage(canvas, fileName);
+                        downloadImage(highQualityCanvas, fileName);
                     }
-                }, 'image/png', 1.0);
+                }, 'image/png', 1.0); // أقصى جودة
             }).catch(error => {
                 console.error('خطأ في إنشاء الصورة:', error);
                 alert('حدث خطأ في إنشاء الصورة. يرجى المحاولة مرة أخرى.');
             }).finally(() => {
+                // استعادة textareas
                 replacedTextareas.forEach(item => {
                     item.replacement.parentNode.replaceChild(item.original, item.replacement);
                 });
-                hideLoader(); // إخفاء المؤشر عند انتهاء المشاركة أو فشلها
+                hideLoader();
             });
         }
 
@@ -1252,6 +1364,57 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        // === دالة مسح التخزين ===
+        function clearStorage() {
+            if (confirm('هل أنت متأكد من أنك تريد حذف جميع البيانات المحفوظة؟ سيتم مسح كل ما كتبته.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                
+                // إعادة تعيين جميع حقول النموذج
+                document.querySelectorAll('input[type="text"], input[type="date"]').forEach(input => {
+                    input.value = '';
+                });
+                
+                document.querySelectorAll('textarea').forEach(textarea => {
+                    textarea.value = '';
+                    autoExpand(textarea);
+                });
+                
+                document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.checked = false;
+                });
+                
+                // مسح الصور
+                attachedPhotos = [];
+                displayPhotos();
+                
+                // مسح التوقيعات
+                clearCanvas('managerSign');
+                clearCanvas('techSign');
+                
+                // إعادة تعيين التاريخ إلى اليوم
+                const today = new Date();
+                document.getElementById('dateInput').value = today.toISOString().split('T')[0];
+                updateDay(today);
+                
+                // إعادة تعيين الجدول إلى صف واحد فقط
+                const tbody = document.querySelector('#partsTable tbody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                        <td><textarea class="form-control" rows="2" oninput="autoExpand(this)"></textarea></td>
+                        <td><button class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑 حذف</button></td>
+                    </tr>
+                `;
+                
+                alert('تم مسح جميع البيانات المحفوظة بنجاح.');
+            }
         }
 
         // === وظائف الحفظ التلقائي والاستعادة باستخدام localStorage ===
@@ -1268,7 +1431,8 @@
                 radios: {},
                 photos: attachedPhotos,
                 managerSign: document.getElementById('managerSign').style.backgroundImage,
-                techSign: document.getElementById('techSign').style.backgroundImage
+                techSign: document.getElementById('techSign').style.backgroundImage,
+                tableRows: []
             };
 
             document.querySelectorAll('input').forEach(input => {
@@ -1290,6 +1454,16 @@
                 if (radio.checked) {
                     data.radios[radio.name] = radio.id;
                 }
+            });
+
+            // حفظ بيانات الجدول
+            const rows = document.querySelectorAll('#partsTable tbody tr');
+            rows.forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('textarea').forEach(textarea => {
+                    rowData.push(textarea.value);
+                });
+                data.tableRows.push(rowData);
             });
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1354,6 +1528,23 @@
                     techSign.innerHTML = '';
                 }
 
+                // استعادة بيانات الجدول
+                if (data.tableRows && data.tableRows.length > 0) {
+                    const tbody = document.querySelector('#partsTable tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.tableRows.forEach(rowData => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><textarea class="form-control" rows="2" oninput="autoExpand(this)">${rowData[0] || ''}</textarea></td>
+                            <td><textarea class="form-control" rows="2" oninput="autoExpand(this)">${rowData[1] || ''}</textarea></td>
+                            <td><textarea class="form-control" rows="2" oninput="autoExpand(this)">${rowData[2] || ''}</textarea></td>
+                            <td><button class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑 حذف</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
                 console.log("تم استعادة البيانات من التخزين المحلي.");
             }
         }
@@ -1377,4 +1568,4 @@
 
 </body>
 
-</html>
+                    </html>
