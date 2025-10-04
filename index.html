@@ -4,13 +4,16 @@
 <head>
     <meta charset="UTF-8" />
     <title>نموذج تقرير صيانة</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=1024" />
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <style>
         /* 1. إعادة تعيين الأساسيات */
@@ -52,7 +55,7 @@
         .btn-clear { background: #e74c3c; color: white; } .btn-clear:hover { background: #c0392b; transform: scale(1.05); }
         .btn-save { background: #2ecc71; color: white; } .btn-save:hover { background: #27ae60; transform: scale(1.05); }
         /* 12. نافذة التوقيع الكبيرة (Modal) */
-        #signatureModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); }
         .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 20px; padding: 30px; width: 90%; max-width: 800px; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5); animation: modalAppear 0.4s ease-out; }
         @keyframes modalAppear { from { opacity: 0; transform: translate(-50%, -60%); } to { opacity: 1; transform: translate(-50%, -50%); } }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
@@ -69,9 +72,12 @@
         .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
         .photo-item { position: relative; border-radius: 15px; overflow: hidden; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); transition: all 0.3s ease; border: 3px solid #ffffff; }
         .photo-item:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); }
-        .photo-item img { width: 100%; height: 200px; object-fit: cover; object-position: center; display: block; }
-        .photo-remove { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); transition: all 0.3s ease; }
+        .photo-item img { width: 100%; height: auto; max-height: 250px; object-fit: contain; display: block; }
+        .photo-remove, .photo-crop { position: absolute; top: 10px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); transition: all 0.3s ease; }
+        .photo-remove { right: 10px; }
+        .photo-crop { left: 10px; background: #007bff; }
         .photo-remove:hover { background: #c0392b; transform: scale(1.1); }
+        .photo-crop:hover { background: #0056b3; transform: scale(1.1); }
         .photo-buttons { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
         .photo-btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
         .photo-btn-camera { background: linear-gradient(135deg, #17a2b8, #138496); color: white; }
@@ -80,6 +86,9 @@
         .photo-btn-gallery:hover { background: linear-gradient(135deg, #5a32a3, #4c2a85); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(111, 66, 193, 0.3); }
         #cameraInput, #galleryInput { display: none; }
         .no-photos { text-align: center; color: #6c757d; font-style: italic; padding: 40px 20px; background: #ffffff; border-radius: 10px; border: 2px dashed #dee2e6; font-size: 16px; }
+        /* استايل نافذة قص الصور */
+        #cropperModal .modal-content { max-width: 90vw; }
+        #imageToCrop { display: block; max-width: 100%; max-height: 70vh; }
         /* 16. تحسينات إضافية للعناوين */
         .section-title { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; font-weight: 700; }
         /* 17. تحسين مظهر الحقول */
@@ -252,7 +261,7 @@
                 </div>
             </div>
 
-            <div id="signatureModal">
+            <div id="signatureModal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2 class="modal-title"><i class="fas fa-signature"></i> التوقيع - المساحة مكبرة</h2>
@@ -264,6 +273,22 @@
                         <button class="btn btn-save" onclick="saveLargeSignature()"><i class="fas fa-save"></i> حفظ</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cropperModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-crop-alt"></i> قص وتعديل الصورة</h2>
+                <div class="close-btn" onclick="closeCropper()"><i class="fas fa-times"></i></div>
+            </div>
+            <div>
+                <img id="imageToCrop" src="" alt="Image to crop">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-clear" onclick="closeCropper()"><i class="fas fa-times"></i> إلغاء</button>
+                <button class="btn btn-save" onclick="saveCroppedImage()"><i class="fas fa-check"></i> حفظ التعديل</button>
             </div>
         </div>
     </div>
@@ -280,9 +305,11 @@
         let lastX = 0;
         let lastY = 0;
         let attachedPhotos = [];
+        let cropper = null;
+        let currentPhotoIdToCrop = null;
 
         // ===== الثوابت والإعدادات =====
-        const PHOTO_CONFIG = { maxWidth: 1024, maxHeight: 768, quality: 0.85, format: 'image/jpeg' };
+        const PHOTO_CONFIG = { maxWidth: 1024, maxHeight: 1024, quality: 0.85, format: 'image/jpeg' };
         const STORAGE_KEY = 'maintenanceReportData';
         const EXPIRATION_MINUTES = 5;
 
@@ -335,7 +362,7 @@
             saveToLocalStorage();
         }
 
-        // ===== دوال التوقيع (FIXED) =====
+        // ===== دوال التوقيع =====
         function initLargeCanvas() {
             const canvas = document.getElementById('largeCanvas');
             const ctx = canvas.getContext('2d');
@@ -344,13 +371,11 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Event listeners for mouse
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseout', stopDrawing);
 
-            // Event listeners for touch, now handled directly
             canvas.addEventListener('touchstart', startDrawing);
             canvas.addEventListener('touchmove', draw);
             canvas.addEventListener('touchend', stopDrawing);
@@ -361,33 +386,14 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            // Handle both touch and mouse events
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
         }
 
-        function startDrawing(e) {
-            e.preventDefault();
-            isDrawing = true;
-            [lastX, lastY] = getPos(e);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault(); // Prevent scrolling while drawing
-            const [currentX, currentY] = getPos(e);
-            const ctx = document.getElementById('largeCanvas').getContext('2d');
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(currentX, currentY);
-            ctx.stroke();
-            [lastX, lastY] = [currentX, currentY];
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-        }
+        function startDrawing(e) { e.preventDefault(); isDrawing = true; [lastX, lastY] = getPos(e); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const [currentX, currentY] = getPos(e); const ctx = document.getElementById('largeCanvas').getContext('2d'); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(currentX, currentY); ctx.stroke(); [lastX, lastY] = [currentX, currentY]; }
+        function stopDrawing() { isDrawing = false; }
         
         function openModal(canvasId) { currentCanvasId = canvasId; document.getElementById('signatureModal').style.display = 'block'; clearLargeCanvas(); }
         function closeModal() { document.getElementById('signatureModal').style.display = 'none'; currentCanvasId = null; }
@@ -411,8 +417,77 @@
             } catch (error) { console.error("Error processing images:", error); alert("An error occurred while processing an image."); } 
             finally { hideLoader(); event.target.value = ''; }
         }
-        function displayPhotos() { const photosGrid = document.getElementById('photosGrid'); if (attachedPhotos.length === 0) { photosGrid.innerHTML = '<div class="no-photos">لا توجد صور مرفقة بعد</div>'; return; } photosGrid.innerHTML = attachedPhotos.map(photo => `<div class="photo-item"><img src="${photo.src}" alt="${photo.name}" loading="lazy"><button class="photo-remove" onclick="removePhoto('${photo.id}')" title="حذف الصورة"><i class="fas fa-times"></i></button></div>`).join(''); }
+        
+        function displayPhotos() {
+            const photosGrid = document.getElementById('photosGrid');
+            if (attachedPhotos.length === 0) {
+                photosGrid.innerHTML = '<div class="no-photos">لا توجد صور مرفقة بعد</div>';
+                return;
+            }
+            photosGrid.innerHTML = attachedPhotos.map(photo => `
+                <div class="photo-item">
+                    <img src="${photo.src}" alt="${photo.name}" loading="lazy">
+                    <button class="photo-remove" onclick="removePhoto('${photo.id}')" title="حذف الصورة"><i class="fas fa-times"></i></button>
+                    <button class="photo-crop" onclick="openCropper('${photo.id}')" title="قص الصورة"><i class="fas fa-crop-alt"></i></button>
+                </div>
+            `).join('');
+        }
+        
         function removePhoto(photoId) { attachedPhotos = attachedPhotos.filter(photo => photo.id != photoId); displayPhotos(); saveToLocalStorage(); }
+        
+        // ===== دوال قص الصور =====
+        function openCropper(photoId) {
+            const photo = attachedPhotos.find(p => p.id == photoId);
+            if (!photo) return;
+            currentPhotoIdToCrop = photoId;
+            const modal = document.getElementById('cropperModal');
+            const image = document.getElementById('imageToCrop');
+            image.src = photo.src;
+            modal.style.display = 'block';
+
+            image.onload = () => {
+                if (cropper) {
+                    cropper.destroy();
+                }
+                cropper = new Cropper(image, {
+                    aspectRatio: NaN,
+                    viewMode: 1,
+                    background: false,
+                    responsive: true,
+                    autoCropArea: 0.8,
+                });
+            };
+        }
+
+        function closeCropper() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('cropperModal').style.display = 'none';
+            currentPhotoIdToCrop = null;
+        }
+
+        function saveCroppedImage() {
+            if (!cropper || !currentPhotoIdToCrop) return;
+            showLoader();
+            const croppedCanvas = cropper.getCroppedCanvas({
+                maxWidth: PHOTO_CONFIG.maxWidth,
+                maxHeight: PHOTO_CONFIG.maxHeight,
+            });
+
+            const newSrc = croppedCanvas.toDataURL(PHOTO_CONFIG.format, PHOTO_CONFIG.quality);
+            const photoIndex = attachedPhotos.findIndex(p => p.id == currentPhotoIdToCrop);
+            if (photoIndex > -1) {
+                attachedPhotos[photoIndex].src = newSrc;
+            }
+            
+            displayPhotos();
+            saveToLocalStorage();
+            closeCropper();
+            hideLoader();
+        }
+
         function getBranchName() { const branchInput = document.getElementById('branchInput'); let branchName = branchInput.value.trim() || branchInput.placeholder || 'فرع'; return branchName.replace(/[^a-zA-Z0-9\u0600-\u06FF\s]/g, '').replace(/\s+/g, '_'); }
         function downloadImage(canvas, fileName) { const link = document.createElement("a"); link.download = `${fileName}.png`; link.href = canvas.toDataURL('image/png', 1.0); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
 
@@ -492,34 +567,26 @@
             if (data.techSign) { const sign = document.getElementById('techSign'); sign.style.backgroundImage = data.techSign; sign.style.backgroundSize = 'contain'; sign.style.backgroundRepeat = 'no-repeat'; sign.style.backgroundPosition = 'center'; sign.innerHTML = ''; }
         }
 
-        // ===== IMPROVED: دالة مسح البيانات المحفوظة وتفريغ النموذج =====
         function clearLocalStorage() {
             if (confirm("هل أنت متأكد أنك تريد مسح جميع البيانات المحفوظة؟")) {
                 localStorage.removeItem(STORAGE_KEY);
-                resetForm(); // Call the new reset function
+                resetForm();
                 alert("تم مسح البيانات وتفريغ النموذج بنجاح.");
             }
         }
         
-        // ===== NEW: دالة لتفريغ جميع الحقول في الصفحة =====
         function resetForm() {
-            // Clear all text inputs and textareas
             document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
-            // Uncheck all radio buttons and checkboxes
             document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
-            // Reset signature canvases
             clearCanvas('managerSign');
             clearCanvas('techSign');
-            // Clear photos
             attachedPhotos = [];
             displayPhotos();
-            // Reset the parts table to a single empty row
             const tbody = document.querySelector('#partsTable tbody');
             tbody.innerHTML = '';
             addRow();
         }
 
-        // ===== الحفظ التلقائي عند أي تغيير =====
         document.addEventListener('input', (e) => {
             if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) { saveToLocalStorage(); }
         });
