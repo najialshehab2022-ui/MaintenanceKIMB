@@ -162,7 +162,7 @@
                 <h5 class="fw-bold m-0" style="color: #2c3e50;">بنك الكريمي للتمويل الأصغر الإسلامي</h5>  
             </div>  
             <div class="col-4">  
-                <img src="kimb.png" alt="شعار" class="img-fluid" style="max-height: 80px;" crossorigin="anonymous" onerror="this.style.display='none'" />  
+                <img src="kimb.png" alt="شعار" id="bankLogo" class="img-fluid" style="max-height: 80px;" crossorigin="anonymous" onerror="this.style.display='none'" />  
             </div>  
             <div class="col-4 text-start">  
                 <div class="d-flex align-items-center justify-content-end gap-2">  
@@ -433,6 +433,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('change', handleAutoSaveTrigger);  
 
     initSignaturePad();  
+    preloadLogoAsBase64();  
     await loadFromIndexedDB();  
 });  
 
@@ -453,6 +454,30 @@ function handleAutoSaveTrigger(e) {
         saveToIndexedDB();  
     }  
 }  
+
+/* ========== شعار البنك: تحميله مسبقاً كـ Base64 لتفادي مشاكل CORS وتشويه الكانفاس ========== */
+async function preloadLogoAsBase64() {
+    const logoImg = document.getElementById('bankLogo');
+    if (!logoImg) return;
+    const originalSrc = logoImg.getAttribute('src');
+    try {
+        const response = await fetch(originalSrc, { cache: 'force-cache' });
+        if (!response.ok) throw new Error('فشل تحميل الشعار: ' + response.status);
+        const blob = await response.blob();
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+        logoImg.src = base64;
+        logoImg.removeAttribute('crossorigin');
+        logoImg.style.display = '';
+    } catch (e) {
+        console.warn('تعذر تحميل شعار البنك، سيتم إخفاؤه من التقرير:', e);
+        logoImg.style.display = 'none';
+    }
+}
 
 /* ========== الجدول ========== */  
 function addRow() {  
@@ -929,22 +954,46 @@ async function exportToPDF() {
     const targetDiv = document.getElementById("reportArea");  
     await new Promise(r => setTimeout(r, 250));  
 
+    // الحدود الآمنة لأبعاد الكانفاس على متصفحات الأندرويد (تجنباً لفشل toDataURL مع التقارير الطويلة المليئة بالصور)
+    const MAX_CANVAS_DIMENSION = 8000;   // أقصى عرض/ارتفاع منفرد للكانفاس
+    const MAX_CANVAS_AREA = 16000000;    // أقصى مساحة إجمالية (~16 ميجا بكسل)
+
+    function pickSafeScale() {
+        const baseWidth = targetDiv.scrollWidth || 1024;
+        const baseHeight = targetDiv.scrollHeight || 1000;
+        const candidates = [2, 1.5, 1, 0.75, 0.5];
+        for (const c of candidates) {
+            const w = baseWidth * c;
+            const h = baseHeight * c;
+            if (w <= MAX_CANVAS_DIMENSION && h <= MAX_CANVAS_DIMENSION && (w * h) <= MAX_CANVAS_AREA) {
+                return c;
+            }
+        }
+        return 0.5;
+    }
+
+    function restoreDOM() {
+        replacements.forEach(item => { if (item.replacement.parentNode) item.replacement.parentNode.replaceChild(item.original, item.replacement); });
+        noPrintElements.forEach(el => { el.style.display = el.dataset.originalDisplay || ''; });
+    }
+
     try {  
+        const safeScale = pickSafeScale();
         document.getElementById('loaderText').textContent = 'جاري هندسة ورسم عناصر التقرير بدقة فائقة...';  
 
-        // التقاط الـ Canvas بدقة عالية بمقياس x3 لضمان وضوح النصوص والتواقيع عند التكبير
         const canvas = await html2canvas(targetDiv, {  
             useCORS: true,  
-            scale: 3,  
+            scale: safeScale,  
             scrollX: 0,  
             scrollY: 0,  
             windowWidth: 1024,  
-            backgroundColor: '#ffffff'  
+            backgroundColor: '#ffffff',  
+            imageTimeout: 15000,  
+            logging: false  
         });  
 
         // إرجاع عناصر الواجهة الرسومية للأصل فوراً بعد التقاط الـ Canvas
-        replacements.forEach(item => item.replacement.parentNode.replaceChild(item.original, item.replacement));  
-        noPrintElements.forEach(el => { el.style.display = el.dataset.originalDisplay || ''; });  
+        restoreDOM();
 
         document.getElementById('loaderText').textContent = 'جاري حقن ملف PDF وتجهيزه...';  
 
@@ -962,7 +1011,15 @@ async function exportToPDF() {
         // إنشاء ملف PDF بأبعاد مخصصة (عرض ثابت وطول مطاطي)
         const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight], true);  
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        let imgData;
+        try {
+            imgData = canvas.toDataURL('image/jpeg', 0.88);
+        } catch (taintErr) {
+            // محاولة أخيرة بجودة أقل في حال فشل التصدير لأي سبب متعلق بحجم البيانات
+            console.error('toDataURL فشلت، إعادة المحاولة بجودة أقل:', taintErr);
+            imgData = canvas.toDataURL('image/jpeg', 0.6);
+        }
+
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
         
         pdf.save(fileName);  
@@ -984,9 +1041,8 @@ async function exportToPDF() {
 
     } catch (err) {  
         console.error("PDF export failed:", err);  
-        replacements.forEach(item => { if (item.replacement.parentNode) item.replacement.parentNode.replaceChild(item.original, item.replacement); });  
-        noPrintElements.forEach(el => el.style.display = el.dataset.originalDisplay || '');  
-        alert('حدثت مشكلة أثناء تصدير ملف الـ PDF. يرجى إعادة المحاولة.');  
+        restoreDOM();
+        alert('حدثت مشكلة أثناء تصدير ملف الـ PDF.\nالسبب: ' + (err && err.message ? err.message : 'خطأ غير معروف') + '\nيرجى تقليل عدد/حجم الصور المرفقة وإعادة المحاولة.');  
     } finally {  
         hideLoading();  
     }  
